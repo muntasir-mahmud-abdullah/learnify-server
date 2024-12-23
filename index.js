@@ -43,6 +43,7 @@ async function run() {
     // tutors related apis
     const tutorsCollection = client.db("learnify").collection("tutors");
     const bookedTutorsCollection = client.db('learnify').collection('booked_tutors');
+    const tutorialsCollection = client.db('learnify').collection('tutorials');
     app.get("/tutors", async (req, res) => {
       const cusor = tutorsCollection.find();
       const result = await cusor.toArray();
@@ -55,6 +56,14 @@ async function run() {
       res.send(result);
     });
 
+    // post tutorial
+
+    app.post('/tutorials',async(req,res)=>{
+      const tutorial = req.body;
+      const result = await tutorialsCollection.insertOne(tutorial);
+      res.send(result);
+    })
+
 
 
     //Booked Tutors apis
@@ -66,7 +75,7 @@ async function run() {
       //aggregation of data
       // name,image, language,price,and review btn
       for (const bookedTutor of result){
-        console.log(bookedTutor.tutor_id);
+        // console.log(bookedTutor.tutor_id);
 
       }
       res.send(result);
