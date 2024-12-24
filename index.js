@@ -42,8 +42,10 @@ async function run() {
     });
     // tutors related apis
     const tutorsCollection = client.db("learnify").collection("tutors");
-    const bookedTutorsCollection = client.db('learnify').collection('booked_tutors');
-    const tutorialsCollection = client.db('learnify').collection('tutorials');
+    const bookedTutorsCollection = client
+      .db("learnify")
+      .collection("booked_tutors");
+    const tutorialsCollection = client.db("learnify").collection("tutorials");
     app.get("/tutors", async (req, res) => {
       const cusor = tutorsCollection.find();
       const result = await cusor.toArray();
@@ -58,36 +60,52 @@ async function run() {
 
     // post tutorial
 
-    app.post('/tutorials',async(req,res)=>{
+    app.post("/tutorials", async (req, res) => {
       const tutorial = req.body;
       const result = await tutorialsCollection.insertOne(tutorial);
       res.send(result);
-    })
+    });
 
-
+    //my tutorials
+    app.get("/tutorials", async (req, res) => {
+      const email = req.query.email;
+      let query = null;
+      if (email) {
+        query = { email: email };
+      }
+      const cusor = tutorialsCollection.find(query);
+      const result = await cusor.toArray();
+      res.send(result);
+    });
 
     //Booked Tutors apis
     //get all data ,get one data , get some dat [0,1,many]
-    app.get('/booked-tutor',async(req,res)=>{
+    app.get("/booked-tutor", async (req, res) => {
       const email = req.query.email;
-      const query = {user_email:email}
+      const query = { user_email: email };
       const result = await bookedTutorsCollection.find(query).toArray();
       //aggregation of data
       // name,image, language,price,and review btn
-      for (const bookedTutor of result){
+      for (const bookedTutor of result) {
         // console.log(bookedTutor.tutor_id);
-
       }
       res.send(result);
-    })
-    app.post('/booked-tutors',async(req,res)=>{
+    });
+
+    app.post("/booked-tutors", async (req, res) => {
       const booked = req.body;
-     const result = bookedTutorsCollection.insertOne(booked);
-     res.send(result);
-    })
+      const result = bookedTutorsCollection.insertOne(booked);
+      res.send(result);
+    });
 
+    // fetch booked tutor by id
 
-
+    app.get("/myTutors/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await tutorsCollection.findOne(query);
+      res.send(result);
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
