@@ -26,8 +26,8 @@ async function run() {
     // Collections
     const db = client.db("learnify");
     const languagesCollection = db.collection("languages");
-    const tutorsCollection = db.collection("tutors");
     const tutorialsCollection = db.collection("tutorials");
+    const bookedTutorsCollection = db.collection("bookedTutors");
 
     // Routes
     // Languages APIs
@@ -40,36 +40,40 @@ async function run() {
       }
     });
 
-    app.get("/languages/:id", async (req, res) => {
-      try {
-        const id = req.params.id;
-        if (!ObjectId.isValid(id)) {
-          return res.status(400).send({ error: "Invalid ID format" });
-        }
-        const result = await languagesCollection.findOne({ _id: new ObjectId(id) });
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({ error: "Failed to fetch language" });
-      }
-    });
+    // app.get("/languages/:id", async (req, res) => {
+    //   try {
+    //     const id = req.params.id;
+    //     if (!ObjectId.isValid(id)) {
+    //       return res.status(400).send({ error: "Invalid ID format" });
+    //     }
+    //     const result = await languagesCollection.findOne({
+    //       _id: new ObjectId(id),
+    //     });
+    //     res.send(result);
+    //   } catch (error) {
+    //     res.status(500).send({ error: "Failed to fetch language" });
+    //   }
+    // });
 
     // Tutors APIs
-    app.get("/tutors", async (req, res) => {
+    app.get("/tutorials", async (req, res) => {
       try {
-        const result = await tutorsCollection.find().toArray();
+        const result = await tutorialsCollection.find().toArray();
         res.send(result);
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch tutors" });
       }
     });
 
-    app.get("/tutors/:id", async (req, res) => {
+    app.get("/tutorials/:id", async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
           return res.status(400).send({ error: "Invalid ID format" });
         }
-        const result = await tutorsCollection.findOne({ _id: new ObjectId(id) });
+        const result = await tutorialsCollection.findOne({
+          _id: new ObjectId(id),
+        });
         res.send(result);
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch tutor" });
@@ -97,13 +101,19 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch tutorials" });
       }
     });
+    // get tutorials
 
+    // app.get('/tutorials',async(req,res)=>{
+    //   const cursor = tutorialsCollection.find();
+    //   const result = await cursor.toArray();
+    //   res.send(result);
+    // })
 
     // Update tutorial
-    app.put('/tutorials/:id',async(req,res)=>{
+    app.put("/tutorials/:id", async (req, res) => {
       const id = req.params.id;
-      const filter = {_id:new ObjectId(id)};
-      const options = {upsert:true};
+      const filter = { _id: new ObjectId(id) };
+      const options = { upsert: true };
       const updatedTutorial = req.body;
       const tutorial = {
         $set: {
@@ -113,20 +123,25 @@ async function run() {
           description: updatedTutorial.description,
           price: updatedTutorial.price,
         },
-      }
-      const result = await tutorialsCollection.updateOne(filter,tutorial,options)
-      res.send(result)
-    })
+      };
+      const result = await tutorialsCollection.updateOne(
+        filter,
+        tutorial,
+        options
+      );
+      res.send(result);
+    });
 
-
-//delete tutorial
+    //delete tutorial
     app.delete("/tutorials/:id", async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
           return res.status(400).send({ error: "Invalid ID format" });
         }
-        const result = await tutorialsCollection.deleteOne({ _id: new ObjectId(id) });
+        const result = await tutorialsCollection.deleteOne({
+          _id: new ObjectId(id),
+        });
         res.send(result);
       } catch (error) {
         res.status(500).send({ error: "Failed to delete tutorial" });
@@ -139,12 +154,48 @@ async function run() {
         if (!ObjectId.isValid(id)) {
           return res.status(400).send({ error: "Invalid ID format" });
         }
-        const result = await tutorialsCollection.findOne({ _id: new ObjectId(id) });
+        const result = await tutorialsCollection.findOne({
+          _id: new ObjectId(id),
+        });
         res.send(result);
       } catch (error) {
         res.status(500).send({ error: "Failed to fetch tutorial" });
       }
     });
+
+    //   find tutors based on category
+
+    app.get("/tutorials/category/:language", async (req, res) => {
+      try {
+        const { language } = req.params;
+        const query = { language: language };
+        const tutors = await tutorialsCollection.find(query).toArray();
+        res.send(tutors);
+      } catch (error) {
+        console.error("Error fetching tutors by category:", error);
+        res.status(500).send({ error: "Failed to fetch tutors" });
+      }
+    });
+
+    // booked tutors
+
+    app.post("/booked-tutors", async (req, res) => {
+      const bookedTutor = req.body;
+      console.log(bookedTutor);
+      const result = await bookedTutorsCollection.insertOne(bookedTutor);
+      res.send(result);
+    });
+
+    // my booked tutors
+
+
+    app.get('/booked-tutors', async (req, res) => {
+          const cursor = bookedTutorsCollection.find();
+          const result = await cursor.toArray();
+          res.send(result);
+    });
+    
+
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
