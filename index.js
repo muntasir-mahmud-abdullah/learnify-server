@@ -180,22 +180,46 @@ async function run() {
     // booked tutors
 
     app.post("/booked-tutors", async (req, res) => {
-      const bookedTutor = req.body;
-      console.log(bookedTutor);
-      const result = await bookedTutorsCollection.insertOne(bookedTutor);
-      res.send(result);
+      try {
+        const bookedTutor = req.body;
+        delete bookedTutor._id; // The new booking data
+        const { tutor_id } = bookedTutor;
+
+        // Check if the tutor is already booked by any user
+        const existingBooking = await bookedTutorsCollection.findOne({
+          tutor_id: tutor_id,
+        });
+
+        if (existingBooking) {
+          // If the booking already exists, return a response
+          return res.status(200).send({
+            success: false,
+            message: "This tutor has already been booked.",
+          });
+        }
+
+        // If no existing booking, proceed to insert the new booking
+        const result = await bookedTutorsCollection.insertOne(bookedTutor);
+        res.status(201).send({
+          success: true,
+          message: "Tutor booked successfully.",
+          result,
+        });
+      } catch (error) {
+        console.error("Error booking tutor:", error);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to book tutor." });
+      }
     });
 
     // my booked tutors
 
-
-    app.get('/booked-tutors', async (req, res) => {
-          const cursor = bookedTutorsCollection.find();
-          const result = await cursor.toArray();
-          res.send(result);
+    app.get("/booked-tutors", async (req, res) => {
+      const cursor = bookedTutorsCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
     });
-    
-
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
