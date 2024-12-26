@@ -1,13 +1,22 @@
 const express = require("express");
 const cors = require("cors");
+
+const corsOptions = {
+  origin: ["http://localhost:5173"],
+  credentials: true,
+  optionalSuccessStatus: 200,
+};
+
 const app = express();
+const cookieParser = require("cookie-parser");
 require("dotenv").config();
 const port = process.env.PORT || 5000;
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
-app.use(cors());
+app.use(cors(corsOptions));
 app.use(express.json());
+app.use(cookieParser());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.werzz.mongodb.net/?retryWrites=true&w=majority`;
 
@@ -18,6 +27,20 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   },
 });
+// verify Token
+
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+  if (!token) return res.status(401).send({ message: "unauthorized access" });
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      return res.status(401).send({ message: "unaauthorized access" });
+    }
+    req.user = decoded;
+  });
+
+  next();
+};
 
 async function run() {
   try {
@@ -30,17 +53,32 @@ async function run() {
     const tutorialsCollection = db.collection("tutorials");
     const bookedTutorsCollection = db.collection("bookedTutors");
     //generate jwt token
-    app.post('/jwt',async(req,res)=>{
+    app.post("/jwt", async (req, res) => {
       const email = req.body;
       //create token
-      const token = jwt.sign(email,process.env.SECRET_KEY,{
-        expiresIn:'365d',
-      })
+      const token = jwt.sign(email, process.env.SECRET_KEY, {
+        expiresIn: "365d",
+      });
       console.log(token);
-      res.send(token);
-    })
+      res
+        .cookie("token", token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "prduction" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
+    //logout // clear cookie from browser
 
-
+    app.get("/logout", async (req, res) => {
+      res
+        .clearCookie("token", {
+          maxAge: 0,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: process.env.NODE_ENV === "prduction" ? "none" : "strict",
+        })
+        .send({ success: true });
+    });
 
     // Routes
     // Languages APIs
@@ -94,7 +132,7 @@ async function run() {
     });
 
     // Tutorials APIs
-    app.post("/tutorials", async (req, res) => {
+    app.post("/tutorials", verifyToken, async (req, res) => {
       try {
         const tutorial = req.body;
         const result = await tutorialsCollection.insertOne(tutorial);
@@ -123,7 +161,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/tutorials/:id", async (req, res) => {
+    app.put("/tutorials/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -146,7 +184,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/tutorials/:id", async (req, res) => {
+    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -161,7 +199,7 @@ async function run() {
       }
     });
 
-    app.get("/tutorials/:id", async (req, res) => {
+    app.get("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -192,7 +230,7 @@ async function run() {
 
     // booked tutors
 
-    app.post("/booked-tutors", async (req, res) => {
+    app.post("/booked-tutors", verifyToken, async (req, res) => {
       try {
         const bookedTutor = req.body;
         delete bookedTutor._id; // The new booking data
@@ -228,7 +266,7 @@ async function run() {
 
     // my booked tutors
 
-    app.get("/booked-tutors", async (req, res) => {
+    app.get("/booked-tutors", verifyToken, async (req, res) => {
       const cursor = bookedTutorsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
