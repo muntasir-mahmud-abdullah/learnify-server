@@ -149,7 +149,7 @@ async function run() {
     // });
 
     // Tutors APIs
-    app.get("/tutorials", verifyToken, async (req, res) => {
+    app.get("/tutorials", async (req, res) => {
       try {
         const result = await tutorialsCollection.find().toArray();
         res.send(result);
@@ -182,7 +182,7 @@ async function run() {
     });
 
     // Tutorials APIs
-    app.post("/tutorials", verifyToken, async (req, res) => {
+    app.post("/tutorials",verifyToken, async (req, res) => {
       try {
         const tutorial = req.body;
         const result = await tutorialsCollection.insertOne(tutorial);
@@ -205,7 +205,7 @@ async function run() {
       }
     });
 
-    app.get("/tutorials", verifyToken, async (req, res) => {
+    app.get("/tutorials",verifyToken, async (req, res) => {
       try {
         console.log(req.ph);
         const decodedEmail = req.use?.email;
@@ -231,7 +231,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/tutorials/:id", verifyToken, async (req, res) => {
+    app.put("/tutorials/:id",verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -254,7 +254,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
+    app.delete("/tutorials/:id",verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -269,7 +269,7 @@ async function run() {
       }
     });
 
-    app.get("/tutorials/:id", verifyToken, async (req, res) => {
+    app.get("/tutorials/:id", async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -300,7 +300,7 @@ async function run() {
 
     // booked tutors
 
-    app.post("/booked-tutors", verifyToken, async (req, res) => {
+    app.post("/booked-tutors",verifyToken, async (req, res) => {
       try {
         const bookedTutor = req.body;
         delete bookedTutor._id; // The new booking data
@@ -336,7 +336,7 @@ async function run() {
 
     // my booked tutors
 
-    app.get("/booked-tutors", verifyToken, async (req, res) => {
+    app.get("/booked-tutors",verifyToken, async (req, res) => {
       const cursor = bookedTutorsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
