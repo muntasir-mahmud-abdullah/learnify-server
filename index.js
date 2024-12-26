@@ -3,6 +3,7 @@ const cors = require("cors");
 const app = express();
 require("dotenv").config();
 const port = process.env.PORT || 5000;
+const jwt = require('jsonwebtoken');
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 
 app.use(cors());
@@ -28,6 +29,18 @@ async function run() {
     const languagesCollection = db.collection("languages");
     const tutorialsCollection = db.collection("tutorials");
     const bookedTutorsCollection = db.collection("bookedTutors");
+    //generate jwt token
+    app.post('/jwt',async(req,res)=>{
+      const email = req.body;
+      //create token
+      const token = jwt.sign(email,process.env.SECRET_KEY,{
+        expiresIn:'365d',
+      })
+      console.log(token);
+      res.send(token);
+    })
+
+
 
     // Routes
     // Languages APIs
