@@ -28,23 +28,29 @@ const client = new MongoClient(uri, {
   },
 });
 // verify Token
-// const verifyToken = (req, res, next) => {
-//   const token = req.cookies?.token; // Extract token from cookies
-//   if (!token) {
-//     return res.status(401).send({ message: "Unauthorized access - Token missing" });
-//   }
+const verifyToken = (req, res, next) => {
+  console.log("hello,i am middleware");
+  const token = req.cookies?.token;
+  console.log(token);
+  //   const token = req.cookies?.token; // Extract token from cookies
+  if (!token) {
+    return res
+      .status(401)
+      .send({ message: "Unauthorized access - Token missing" });
+  }
 
-//   jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-//     if (err) {
-//       console.error("Token verification failed:", err.message);
-//       return res.status(403).send({ message: "Forbidden access - Invalid token" });
-//     }
+  jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
+    if (err) {
+      console.error("Token verification failed:", err.message);
+      return res
+        .status(403)
+        .send({ message: "Forbidden access - Invalid token" });
+    }
 
-//     req.user = decoded; // Attach decoded payload to the request
-//     next();
-//   });
-// };
-
+    req.user = decoded; // Attach decoded payload to the request
+    next();
+  });
+};
 
 // const verifyToken = (req, res, next) => {
 //   const token = req.cookies?.token;
@@ -73,11 +79,13 @@ async function run() {
     //generate jwt token
     app.post("/jwt", async (req, res) => {
       const { email } = req.body;
-    
+
       // Create token
-      const token = jwt.sign({ email }, process.env.SECRET_KEY, { expiresIn: "365d" });
+      const token = jwt.sign({ email }, process.env.SECRET_KEY, {
+        expiresIn: "365d",
+      });
       console.log("Generated Token:", token);
-    
+
       res
         .cookie("token", token, {
           httpOnly: true,
@@ -86,7 +94,7 @@ async function run() {
         })
         .send({ success: true });
     });
-    
+
     // app.post("/jwt", async (req, res) => {
     //   const email = req.body;
     //   //create token
@@ -166,7 +174,7 @@ async function run() {
     });
 
     // Tutorials APIs
-    app.post("/tutorials", async (req, res) => {
+    app.post("/tutorials", verifyToken, async (req, res) => {
       try {
         const tutorial = req.body;
         const result = await tutorialsCollection.insertOne(tutorial);
@@ -176,12 +184,17 @@ async function run() {
       }
     });
 
-    app.get("/tutorials", async (req, res) => {
+    app.get("/tutorials", verifyToken, async (req, res) => {
       try {
-        // const decodedEmail = req.use?.email
+        console.log(req.ph);
+        const decodedEmail = req.use?.email;
         const email = req.query.email;
         const query = email ? { email } : {};
-        // console.log(email,decodedEmail);
+        console.log(email, decodedEmail);
+        if (decodedEmail !== email)
+          return res
+            .status(401)
+            .send({ message: "Unauthorized access - Token missing" });
         const result = await tutorialsCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
@@ -197,7 +210,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/tutorials/:id", async (req, res) => {
+    app.put("/tutorials/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -220,7 +233,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/tutorials/:id", async (req, res) => {
+    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -235,7 +248,7 @@ async function run() {
       }
     });
 
-    app.get("/tutorials/:id", async (req, res) => {
+    app.get("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -266,7 +279,7 @@ async function run() {
 
     // booked tutors
 
-    app.post("/booked-tutors", async (req, res) => {
+    app.post("/booked-tutors", verifyToken, async (req, res) => {
       try {
         const bookedTutor = req.body;
         delete bookedTutor._id; // The new booking data
@@ -302,7 +315,7 @@ async function run() {
 
     // my booked tutors
 
-    app.get("/booked-tutors", async (req, res) => {
+    app.get("/booked-tutors", verifyToken, async (req, res) => {
       const cursor = bookedTutorsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
