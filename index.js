@@ -149,7 +149,7 @@ async function run() {
     // });
 
     // Tutors APIs
-    app.get("/my-tutorials", verifyToken, async (req, res) => {
+    app.get("/tutorials", verifyToken, async (req, res) => {
       try {
         const result = await tutorialsCollection.find().toArray();
         res.send(result);
@@ -205,7 +205,7 @@ async function run() {
       }
     });
 
-    app.get("/my-tutorials", verifyToken, async (req, res) => {
+    app.get("/tutorials", verifyToken, async (req, res) => {
       try {
         console.log(req.ph);
         const decodedEmail = req.use?.email;
@@ -231,7 +231,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/my-tutorials/:id", verifyToken, async (req, res) => {
+    app.put("/tutorials/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -254,7 +254,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/my-tutorials/:id", verifyToken, async (req, res) => {
+    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
