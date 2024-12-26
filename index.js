@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 
 const corsOptions = {
-  origin: ["http://localhost:5173"],
+  origin: ["http://localhost:5173",'https://learnify-5acd7.web.app','https://learnify-5acd7.firebaseapp.com'],
   credentials: true,
   optionalSuccessStatus: 200,
 };
@@ -68,8 +68,8 @@ const verifyToken = (req, res, next) => {
 
 async function run() {
   try {
-    await client.connect();
-    console.log("Successfully connected to MongoDB!");
+    // await client.connect();
+    // console.log("Successfully connected to MongoDB!");
 
     // Collections
     const db = client.db("learnify");
@@ -149,6 +149,14 @@ async function run() {
     // });
 
     // Tutors APIs
+    app.get("/my-tutorials", verifyToken, async (req, res) => {
+      try {
+        const result = await tutorialsCollection.find().toArray();
+        res.send(result);
+      } catch (error) {
+        res.status(500).send({ error: "Failed to fetch tutors" });
+      }
+    });
     app.get("/tutorials", async (req, res) => {
       try {
         const result = await tutorialsCollection.find().toArray();
@@ -185,23 +193,19 @@ async function run() {
     });
     // total tutors count
 
-
     app.get("/tutors/count", async (req, res) => {
       try {
         const tutorsCount = await tutorialsCollection.countDocuments();
         res.status(200).send({ count: tutorsCount });
       } catch (error) {
         console.error("Error fetching user count:", error.message);
-        res.status(500).send({ success: false, message: "Failed to fetch user count" });
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch user count" });
       }
     });
 
-
-
-
-
-
-    app.get("/tutorials", verifyToken, async (req, res) => {
+    app.get("/my-tutorials", verifyToken, async (req, res) => {
       try {
         console.log(req.ph);
         const decodedEmail = req.use?.email;
@@ -227,7 +231,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/tutorials/:id", verifyToken, async (req, res) => {
+    app.put("/my-tutorials/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -250,7 +254,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
+    app.delete("/my-tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -338,100 +342,131 @@ async function run() {
       res.send(result);
     });
 
-
-
-
-
-
-
-
     // Create a new route for user registration
-app.post("/register", async (req, res) => {
-  const { name, email, photoURL } = req.body;
+    app.post("/register", async (req, res) => {
+      const { name, email, photoURL } = req.body;
 
-  try {
-    // Ensure the email is unique
-    const existingUser = await client.db("learnify").collection("users").findOne({ email });
-    if (existingUser) {
-      return res.status(400).send({ message: "User already registered" });
-    }
+      try {
+        // Ensure the email is unique
+        const existingUser = await client
+          .db("learnify")
+          .collection("users")
+          .findOne({ email });
+        if (existingUser) {
+          return res.status(400).send({ message: "User already registered" });
+        }
 
-    // Insert new user into the `users` collection
-    const result = await client.db("learnify").collection("users").insertOne({
-      name,
-      email,
-      photoURL,
-      createdAt: new Date(),
+        // Insert new user into the `users` collection
+        const result = await client
+          .db("learnify")
+          .collection("users")
+          .insertOne({
+            name,
+            email,
+            photoURL,
+            createdAt: new Date(),
+          });
+
+        res
+          .status(201)
+          .send({
+            success: true,
+            message: "User registered successfully",
+            result,
+          });
+      } catch (error) {
+        console.error("Error registering user:", error.message);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to register user" });
+      }
     });
 
-    res.status(201).send({ success: true, message: "User registered successfully", result });
-  } catch (error) {
-    console.error("Error registering user:", error.message);
-    res.status(500).send({ success: false, message: "Failed to register user" });
-  }
-});
+    // Create a new route to fetch the count of registered users
+    app.get("/users/count", async (req, res) => {
+      try {
+        const userCount = await client
+          .db("learnify")
+          .collection("users")
+          .countDocuments();
+        res.status(200).send({ count: userCount });
+      } catch (error) {
+        console.error("Error fetching user count:", error.message);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch user count" });
+      }
+    });
 
-// Create a new route to fetch the count of registered users
-app.get("/users/count", async (req, res) => {
-  try {
-    const userCount = await client.db("learnify").collection("users").countDocuments();
-    res.status(200).send({ count: userCount });
-  } catch (error) {
-    console.error("Error fetching user count:", error.message);
-    res.status(500).send({ success: false, message: "Failed to fetch user count" });
-  }
-});
+    //  update review count
 
+    // Increment review count for a tutor
+    app.put("/booked-tutors/:id/review", async (req, res) => {
+      const id = req.params.id;
 
-//  update review count 
+      if (!ObjectId.isValid(id)) {
+        return res.status(400).send({ message: "Invalid ID format" });
+      }
 
+      try {
+        const filter = { _id: new ObjectId(id) };
+        const update = { $inc: { reviews: 1 } }; // Increment `reviews` by 1
 
-// Increment review count for a tutor
-app.put("/booked-tutors/:id/review", async (req, res) => {
-  const id = req.params.id;
+        const result = await bookedTutorsCollection.updateOne(filter, update);
 
-  if (!ObjectId.isValid(id)) {
-    return res.status(400).send({ message: "Invalid ID format" });
-  }
+        if (result.modifiedCount === 0) {
+          return res.status(404).send({ message: "Tutor not found" });
+        }
 
-  try {
-    const filter = { _id: new ObjectId(id) };
-    const update = { $inc: { reviews: 1 } }; // Increment `reviews` by 1
+        res
+          .status(200)
+          .send({ success: true, message: "Review count incremented" });
+      } catch (error) {
+        console.error("Error updating review count:", error.message);
+        res.status(500).send({ message: "Failed to update review count" });
+      }
+    });
+    // Backend Route to Fetch Total Reviews
+    app.get("/reviews/count", async (req, res) => {
+      try {
+        const result = await bookedTutorsCollection
+          .aggregate([
+            {
+              $group: {
+                _id: null, // Group all documents into a single group
+                totalReviews: { $sum: "$reviews" }, // Sum the `reviews` field across all documents
+              },
+            },
+          ])
+          .toArray();
 
-    const result = await bookedTutorsCollection.updateOne(filter, update);
+        const totalReviews = result[0]?.totalReviews || 0; // Handle cases with no reviews
+        res.status(200).send({ totalReviews });
+      } catch (error) {
+        console.error("Error fetching total reviews:", error.message);
+        res
+          .status(500)
+          .send({ success: false, message: "Failed to fetch total reviews" });
+      }
+    });
 
-    if (result.modifiedCount === 0) {
-      return res.status(404).send({ message: "Tutor not found" });
-    }
+    //get profile picture
 
-    res.status(200).send({ success: true, message: "Review count incremented" });
-  } catch (error) {
-    console.error("Error updating review count:", error.message);
-    res.status(500).send({ message: "Failed to update review count" });
-  }
-});
-// Backend Route to Fetch Total Reviews
-app.get("/reviews/count", async (req, res) => {
-  try {
-    const result = await bookedTutorsCollection.aggregate([
-      {
-        $group: {
-          _id: null, // Group all documents into a single group
-          totalReviews: { $sum: "$reviews" }, // Sum the `reviews` field across all documents
-        },
-      },
-    ]).toArray();
-
-    const totalReviews = result[0]?.totalReviews || 0; // Handle cases with no reviews
-    res.status(200).send({ totalReviews });
-  } catch (error) {
-    console.error("Error fetching total reviews:", error.message);
-    res.status(500).send({ success: false, message: "Failed to fetch total reviews" });
-  }
-});
-
-
-
+    app.get("/user-profile", async (req, res) => {
+      const email = req.query.email;
+      try {
+        const user = await client
+          .db("learnify")
+          .collection("users")
+          .findOne({ email });
+        if (!user) {
+          return res.status(404).send({ message: "User not found" });
+        }
+        res.status(200).send(user);
+      } catch (error) {
+        res.status(500).send({ message: "Error fetching user data", error });
+      }
+    });
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
