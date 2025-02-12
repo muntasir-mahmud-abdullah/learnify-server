@@ -29,9 +29,10 @@ const client = new MongoClient(uri, {
 });
 // verify Token
 const verifyToken = (req, res, next) => {
-  console.log("hello,i am middleware");
+  // console.log("hello,i am middleware");
+  // console.log(req.cookies)
   const token = req.cookies?.token;
-  console.log(token);
+  // console.log(token);
   //   const token = req.cookies?.token; // Extract token from cookies
   if (!token) {
     return res
@@ -78,18 +79,19 @@ async function run() {
     const bookedTutorsCollection = db.collection("bookedTutors");
     //generate jwt token
     app.post("/jwt", async (req, res) => {
-      const { email } = req.body;
+      const  email  = req.body;
 
       // Create token
-      const token = jwt.sign({ email }, process.env.SECRET_KEY, {
+      const token = jwt.sign(email, process.env.SECRET_KEY, {
         expiresIn: "365d",
       });
-      console.log("Generated Token:", token);
+      // console.log("Generated Token:", token);
 
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure: process.env.NODE_ENV === "production",
+          secure:false,//http://localhost:5173/signIn
+          // secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ success: true });
@@ -124,7 +126,7 @@ async function run() {
 
     // Routes
     // Languages APIs
-    app.get("/languages", async (req, res) => {
+    app.get("/languages",async (req, res) => {
       try {
         const result = await languagesCollection.find().toArray();
         res.send(result);
@@ -184,6 +186,7 @@ async function run() {
     // Tutorials APIs
     app.post("/tutorials",verifyToken, async (req, res) => {
       try {
+        // console.log('NOW INSIDE API CALLBACK')
         const tutorial = req.body;
         const result = await tutorialsCollection.insertOne(tutorial);
         res.send(result);
@@ -207,11 +210,11 @@ async function run() {
 
     app.get("/tutorials",verifyToken, async (req, res) => {
       try {
-        console.log(req.ph);
-        const decodedEmail = req.use?.email;
+        // console.log(req.ph);
+        const decodedEmail = req.user?.email;
         const email = req.query.email;
         const query = email ? { email } : {};
-        console.log(email, decodedEmail);
+        // console.log(email, decodedEmail);
         if (decodedEmail !== email)
           return res
             .status(401)
@@ -303,12 +306,11 @@ async function run() {
     app.post("/booked-tutors",verifyToken, async (req, res) => {
       try {
         const bookedTutor = req.body;
+        // console.log(bookedTutor);
         delete bookedTutor._id; // The new booking data
-        const { tutor_id } = bookedTutor;
-
         // Check if the tutor is already booked by any user
         const existingBooking = await bookedTutorsCollection.findOne({
-          tutor_id: tutor_id,
+          _id: ObjectId(bookedTutor._id),
         });
 
         if (existingBooking) {
@@ -340,6 +342,7 @@ async function run() {
       const cursor = bookedTutorsCollection.find();
       const result = await cursor.toArray();
       res.send(result);
+      // console.log(bookedTutorsCollection)
     });
 
     // Create a new route for user registration
@@ -403,9 +406,10 @@ async function run() {
     // Increment review count for a tutor
     app.put("/booked-tutors/:id/review", async (req, res) => {
       const id = req.params.id;
-
+      console.log(id);
       if (!ObjectId.isValid(id)) {
         return res.status(400).send({ message: "Invalid ID format" });
+      
       }
 
       try {
