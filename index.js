@@ -2,7 +2,12 @@ const express = require("express");
 const cors = require("cors");
 
 const corsOptions = {
-  origin: ["http://localhost:5173",'https://learnify-5acd7.web.app','https://learnify-5acd7.firebaseapp.com'],
+  origin: [
+    "http://localhost:5173",
+    "https://learnify-5acd7.web.app",
+    "https://learnify-5acd7.firebaseapp.com",
+    "https://learnify-1810005.netlify.app",
+  ],
   credentials: true,
   optionalSuccessStatus: 200,
 };
@@ -79,7 +84,7 @@ async function run() {
     const bookedTutorsCollection = db.collection("bookedTutors");
     //generate jwt token
     app.post("/jwt", async (req, res) => {
-      const  email  = req.body;
+      const email = req.body;
 
       // Create token
       const token = jwt.sign(email, process.env.SECRET_KEY, {
@@ -90,8 +95,8 @@ async function run() {
       res
         .cookie("token", token, {
           httpOnly: true,
-          secure:false,//http://localhost:5173/signIn
-          // secure: process.env.NODE_ENV === "production",
+          // secure:false,//http://localhost:5173/signIn
+          secure: process.env.NODE_ENV === "production",
           sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
         })
         .send({ success: true });
@@ -126,7 +131,7 @@ async function run() {
 
     // Routes
     // Languages APIs
-    app.get("/languages",async (req, res) => {
+    app.get("/languages", async (req, res) => {
       try {
         const result = await languagesCollection.find().toArray();
         res.send(result);
@@ -184,7 +189,7 @@ async function run() {
     });
 
     // Tutorials APIs
-    app.post("/tutorials",verifyToken, async (req, res) => {
+    app.post("/tutorials", verifyToken, async (req, res) => {
       try {
         // console.log('NOW INSIDE API CALLBACK')
         const tutorial = req.body;
@@ -208,7 +213,7 @@ async function run() {
       }
     });
 
-    app.get("/tutorials",verifyToken, async (req, res) => {
+    app.get("/my-tutorials", verifyToken, async (req, res) => {
       try {
         // console.log(req.ph);
         const decodedEmail = req.user?.email;
@@ -234,7 +239,7 @@ async function run() {
     // })
 
     // Update tutorial
-    app.put("/tutorials/:id",verifyToken, async (req, res) => {
+    app.put("/tutorials/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const options = { upsert: true };
@@ -257,7 +262,7 @@ async function run() {
     });
 
     //delete tutorial
-    app.delete("/tutorials/:id",verifyToken, async (req, res) => {
+    app.delete("/tutorials/:id", verifyToken, async (req, res) => {
       try {
         const id = req.params.id;
         if (!ObjectId.isValid(id)) {
@@ -303,26 +308,17 @@ async function run() {
 
     // booked tutors
 
-    app.post("/booked-tutors",verifyToken, async (req, res) => {
+    app.post("/booked-tutors", verifyToken, async (req, res) => {
       try {
         const bookedTutor = req.body;
-        // console.log(bookedTutor);
-        delete bookedTutor._id; // The new booking data
-        // Check if the tutor is already booked by any user
-        const existingBooking = await bookedTutorsCollection.findOne({
-          _id: ObjectId(bookedTutor._id),
-        });
+        console.log(bookedTutor);
+        const { _id,...others } = bookedTutor;
 
-        if (existingBooking) {
-          // If the booking already exists, return a response
-          return res.status(200).send({
-            success: false,
-            message: "This tutor has already been booked.",
-          });
-        }
 
-        // If no existing booking, proceed to insert the new booking
-        const result = await bookedTutorsCollection.insertOne(bookedTutor);
+
+
+        // Insert new booking
+        const result = await bookedTutorsCollection.insertOne(others);
         res.status(201).send({
           success: true,
           message: "Tutor booked successfully.",
@@ -338,9 +334,16 @@ async function run() {
 
     // my booked tutors
 
-    app.get("/booked-tutors",verifyToken, async (req, res) => {
-      const cursor = bookedTutorsCollection.find();
-      const result = await cursor.toArray();
+    app.get("/booked-tutors", verifyToken, async (req, res) => {
+      const decodedEmail = req.user?.email;
+      const email = req.query.email;
+      const query = email ? { email } : {};
+      // console.log(email, decodedEmail);
+      if (decodedEmail !== email)
+        return res
+          .status(401)
+          .send({ message: "Unauthorized access - Token missing" });
+      const result = await bookedTutorsCollection.find(query).toArray();
       res.send(result);
       // console.log(bookedTutorsCollection)
     });
@@ -370,13 +373,11 @@ async function run() {
             createdAt: new Date(),
           });
 
-        res
-          .status(201)
-          .send({
-            success: true,
-            message: "User registered successfully",
-            result,
-          });
+        res.status(201).send({
+          success: true,
+          message: "User registered successfully",
+          result,
+        });
       } catch (error) {
         console.error("Error registering user:", error.message);
         res
@@ -409,11 +410,10 @@ async function run() {
       console.log(id);
       if (!ObjectId.isValid(id)) {
         return res.status(400).send({ message: "Invalid ID format" });
-      
       }
 
       try {
-        const filter = { _id: new ObjectId(id) };
+        const filter = { _id: id };
         const update = { $inc: { reviews: 1 } }; // Increment `reviews` by 1
 
         const result = await bookedTutorsCollection.updateOne(filter, update);
