@@ -297,8 +297,11 @@ async function run() {
     app.get("/tutorials/category/:language", async (req, res) => {
       try {
         const { language } = req.params;
-        const query = { language: language };
+        console.log(req.params);
+        const query = { language: language.charAt(0).toUpperCase() + language.slice(1) };
+        console.log(query);
         const tutors = await tutorialsCollection.find(query).toArray();
+        console.log(tutors);
         res.send(tutors);
       } catch (error) {
         console.error("Error fetching tutors by category:", error);
@@ -310,15 +313,36 @@ async function run() {
 
     app.post("/booked-tutors", verifyToken, async (req, res) => {
       try {
-        const bookedTutor = req.body;
-        console.log(bookedTutor);
-        const { _id,...others } = bookedTutor;
+        const { tutor_id, user_email, ...rest } = req.body;
 
+        // 🔍 Input Validation
+        if (!tutor_id || !user_email) {
+          return res.status(400).send({
+            success: false,
+            message: "Tutor ID and user email required",
+          });
+        }
 
+        // 🔄 Check for Existing Booking
+        const existingBooking = await bookedTutorsCollection.findOne({
+          tutor_id,
+          user_email,
+        });
 
+        if (existingBooking) {
+          return res.status(409).send({
+            success: false,
+            message: "You already booked this tutor.",
+          });
+        }
 
-        // Insert new booking
-        const result = await bookedTutorsCollection.insertOne(others);
+        // 🆕 Insert New Booking
+        const result = await bookedTutorsCollection.insertOne({
+          tutor_id,
+          user_email,
+          ...rest,
+        });
+
         res.status(201).send({
           success: true,
           message: "Tutor booked successfully.",
@@ -326,27 +350,34 @@ async function run() {
         });
       } catch (error) {
         console.error("Error booking tutor:", error);
-        res
-          .status(500)
-          .send({ success: false, message: "Failed to book tutor." });
+        res.status(500).send({
+          success: false,
+          message: "Failed to book tutor.",
+        });
       }
     });
 
     // my booked tutors
 
-    app.get("/booked-tutors", verifyToken, async (req, res) => {
-      const decodedEmail = req.user?.email;
-      const email = req.query.email;
-      const query = email ? { email } : {};
-      // console.log(email, decodedEmail);
-      if (decodedEmail !== email)
-        return res
-          .status(401)
-          .send({ message: "Unauthorized access - Token missing" });
-      const result = await bookedTutorsCollection.find(query).toArray();
-      res.send(result);
-      // console.log(bookedTutorsCollection)
-    });
+// Server-side: Fetch booked tutors
+app.get("/booked-tutors", verifyToken, async (req, res) => {
+  const decodedEmail = req.user?.email;
+  const userEmail = req.query.user_email;
+
+  if (decodedEmail !== userEmail) {
+    return res.status(401).send({ message: "Unauthorized access" });
+  }
+
+  try {
+    const query = userEmail ? { user_email: userEmail } : {};
+    const result = await bookedTutorsCollection.find(query).toArray();
+    res.send(result);
+  } catch (error) {
+    console.error("Error fetching booked tutors:", error);
+    res.status(500).send({ message: "Failed to fetch booked tutors", error });
+  }
+});
+
 
     // Create a new route for user registration
     app.post("/register", async (req, res) => {
@@ -413,7 +444,7 @@ async function run() {
       }
 
       try {
-        const filter = { _id: id };
+        const filter = { _id: new ObjectId(id) };
         const update = { $inc: { reviews: 1 } }; // Increment `reviews` by 1
 
         const result = await bookedTutorsCollection.updateOne(filter, update);
