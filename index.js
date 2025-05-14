@@ -298,7 +298,9 @@ async function run() {
       try {
         const { language } = req.params;
         console.log(req.params);
-        const query = { language: language.charAt(0).toUpperCase() + language.slice(1) };
+        const query = {
+          language: language.charAt(0).toUpperCase() + language.slice(1),
+        };
         console.log(query);
         const tutors = await tutorialsCollection.find(query).toArray();
         console.log(tutors);
@@ -359,28 +361,29 @@ async function run() {
 
     // my booked tutors
 
-// Server-side: Fetch booked tutors
-app.get("/booked-tutors", verifyToken, async (req, res) => {
-  const decodedEmail = req.user?.email;
-  const userEmail = req.query.user_email;
+    // Server-side: Fetch booked tutors
+    app.get("/booked-tutors", verifyToken, async (req, res) => {
+      const decodedEmail = req.user?.email;
+      const userEmail = req.query.user_email;
 
-  if (decodedEmail !== userEmail) {
-    return res.status(401).send({ message: "Unauthorized access" });
-  }
+      if (decodedEmail !== userEmail) {
+        return res.status(401).send({ message: "Unauthorized access" });
+      }
 
-  try {
-    const query = userEmail ? { user_email: userEmail } : {};
-    const result = await bookedTutorsCollection.find(query).toArray();
-    res.send(result);
-  } catch (error) {
-    console.error("Error fetching booked tutors:", error);
-    res.status(500).send({ message: "Failed to fetch booked tutors", error });
-  }
-});
-
+      try {
+        const query = userEmail ? { user_email: userEmail } : {};
+        const result = await bookedTutorsCollection.find(query).toArray();
+        res.send(result);
+      } catch (error) {
+        console.error("Error fetching booked tutors:", error);
+        res
+          .status(500)
+          .send({ message: "Failed to fetch booked tutors", error });
+      }
+    });
 
     // Create a new route for user registration
-    app.post("/register", async (req, res) => {
+    app.post("/jwt", async (req, res) => {
       const { name, email, photoURL } = req.body;
 
       try {
@@ -500,6 +503,7 @@ app.get("/booked-tutors", verifyToken, async (req, res) => {
         res.status(200).send(user);
       } catch (error) {
         res.status(500).send({ message: "Error fetching user data", error });
+        res.status(500).send({message: "Server error"})
       }
     });
   } finally {
