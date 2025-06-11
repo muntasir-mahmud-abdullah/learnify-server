@@ -164,14 +164,14 @@ async function run() {
         res.status(500).send({ error: "Failed to fetch tutors" });
       }
     });
-    app.get("/tutorials", async (req, res) => {
-      try {
-        const result = await tutorialsCollection.find().toArray();
-        res.send(result);
-      } catch (error) {
-        res.status(500).send({ error: "Failed to fetch tutors" });
-      }
-    });
+    // app.get("/tutorials", async (req, res) => {
+    //   try {
+    //     const result = await tutorialsCollection.find().toArray();
+    //     res.send(result);
+    //   } catch (error) {
+    //     res.status(500).send({ error: "Failed to fetch tutors" });
+    //   }
+    // });
 
     app.get("/tutorials/:id", async (req, res) => {
       try {
@@ -214,16 +214,17 @@ async function run() {
     });
 
     app.get("/my-tutorials", verifyToken, async (req, res) => {
-      try {
         // console.log(req.ph);
         const decodedEmail = req.user?.email;
-        const email = req.query.email;
-        const query = email ? { email } : {};
+        const userEmail = req.query.email;
         // console.log(email, decodedEmail);
-        if (decodedEmail !== email)
+        if (decodedEmail !== userEmail) {
           return res
             .status(401)
             .send({ message: "Unauthorized access - Token missing" });
+        }
+        try{
+           const query = userEmail ? { email: userEmail } : {};
         const result = await tutorialsCollection.find(query).toArray();
         res.send(result);
       } catch (error) {
@@ -297,11 +298,11 @@ async function run() {
     app.get("/tutorials/category/:language", async (req, res) => {
       try {
         const { language } = req.params;
-        console.log(req.params);
+        // console.log(req.params);
         const query = {
           language: language.charAt(0).toUpperCase() + language.slice(1),
         };
-        console.log(query);
+        // console.log(query);
         const tutors = await tutorialsCollection.find(query).toArray();
         console.log(tutors);
         res.send(tutors);
@@ -332,9 +333,9 @@ async function run() {
         });
 
         if (existingBooking) {
-          return res.status(409).send({
-            success: false,
-            message: "You already booked this tutor.",
+          return res.send({
+            success:false,
+            message:"You have already booked this tutor"
           });
         }
 
@@ -345,7 +346,7 @@ async function run() {
           ...rest,
         });
 
-        res.status(201).send({
+        res.send({
           success: true,
           message: "Tutor booked successfully.",
           result,
@@ -383,9 +384,11 @@ async function run() {
     });
 
     // Create a new route for user registration
-    app.post("/jwt", async (req, res) => {
+    app.post("/register", async (req, res) => {
       const { name, email, photoURL } = req.body;
-
+       if (!email) {
+    return res.status(400).send({ message: "Email required" });
+  }
       try {
         // Ensure the email is unique
         const existingUser = await client
@@ -441,7 +444,7 @@ async function run() {
     // Increment review count for a tutor
     app.put("/booked-tutors/:id/review", async (req, res) => {
       const id = req.params.id;
-      console.log(id);
+      // console.log(id);
       if (!ObjectId.isValid(id)) {
         return res.status(400).send({ message: "Invalid ID format" });
       }
@@ -492,6 +495,9 @@ async function run() {
 
     app.get("/user-profile", async (req, res) => {
       const email = req.query.email;
+      if(!email) {
+        return res.status(400).send({message: "Missing email query parameter"});
+      }
       try {
         const user = await client
           .db("learnify")
@@ -502,8 +508,8 @@ async function run() {
         }
         res.status(200).send(user);
       } catch (error) {
-        res.status(500).send({ message: "Error fetching user data", error });
-        res.status(500).send({message: "Server error"})
+        // console.log("Error fetching user-profile:",error)
+        res.status(500).send({ message: "Server error", error });
       }
     });
   } finally {
@@ -518,5 +524,5 @@ app.get("/", (req, res) => {
 });
 
 app.listen(port, () => {
-  console.log("Server is listening at port:", port);
+  // console.log("Server is listening at port:", port);
 });
